@@ -623,9 +623,6 @@ function tick() {
     return;
   }
   state.secondsLeft--;
-  if (state.mode === 'work') {
-    state.focusMinutes = (state.focusMinutes || 0);
-  }
   save('ft_state', state);
   render();
 }
@@ -739,7 +736,6 @@ document.getElementById('btnClearDone').addEventListener('click', () => {
 if (state.running) {
   state.running = false;
   intervalId = setInterval(tick, 1000);
-  intervalId; // start fresh
   state.running = true;
 }
 
