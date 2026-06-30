@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Focus Timer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface-2: #f0efe9;
+    --text: #1a1a18;
+    --text-secondary: #6b6a65;
+    --text-muted: #9e9d98;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.18);
+    --accent: #2563eb;
+    --accent-bg: #eff4ff;
+    --accent-text: #1d4ed8;
+    --success: #16a34a;
+    --success-bg: #f0fdf4;
+    --warning: #d97706;
+    --warning-bg: #fffbeb;
+    --danger: #dc2626;
+    --radius: 8px;
+    --work-color: #e24b4a;
+    --break-color: #1d9e75;
+    --long-break-color: #378add;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18;
+      --surface: #26261f;
+      --surface-2: #2e2e26;
+      --text: #f0efe9;
+      --text-secondary: #a8a79f;
+      --text-muted: #6b6a65;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+      --accent-bg: #1e2d4a;
+      --accent-text: #93b5f8;
+      --success-bg: #0d2b1a;
+      --warning-bg: #2b2000;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 4rem;
+  }
+
+  h1 {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+  }
+
+  /* ── Mode tabs ─────────────────────────────────────────── */
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface-2);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 2.5rem;
+  }
+
+  .mode-tab {
+    padding: 6px 16px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .mode-tab.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  /* ── Timer ──────────────────────────────────────────────── */
+  .timer-wrap {
+    position: relative;
+    width: 240px;
+    height: 240px;
+    margin-bottom: 2rem;
+  }
+
+  .timer-svg {
+    width: 240px;
+    height: 240px;
+    transform: rotate(-90deg);
+  }
+
+  .timer-track {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 6;
+  }
+
+  .timer-progress {
+    fill: none;
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s linear, stroke 0.4s;
+  }
+
+  .timer-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .timer-display {
+    font-size: 52px;
+    font-weight: 300;
+    letter-spacing: -2px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .timer-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── Controls ───────────────────────────────────────────── */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .btn-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 0.5px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-secondary);
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-icon:hover { background: var(--surface-2); color: var(--text); }
+
+  .btn-primary {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: none;
+    background: var(--text);
+    color: var(--bg);
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.15s;
+  }
+
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-primary:active { transform: scale(0.96); }
+
+  /* ── Stats row ──────────────────────────────────────────── */
+  .stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 2.5rem;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .stat-card {
+    flex: 1;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Task section ───────────────────────────────────────── */
+  .tasks-wrap {
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .tasks-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .tasks-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .tasks-clear {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .tasks-clear:hover { color: var(--danger); background: var(--surface-2); }
+
+  .task-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .task-input {
+    flex: 1;
+    height: 38px;
+    padding: 0 12px;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .task-input::placeholder { color: var(--text-muted); }
+  .task-input:focus { border-color: var(--accent); }
+
+  .btn-add {
+    height: 38px;
+    padding: 0 14px;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+
+  .btn-add:hover { background: var(--surface-2); }
+
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .task-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    transition: opacity 0.2s;
+  }
+
+  .task-item.done { opacity: 0.45; }
+
+  .task-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border-strong);
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-size: 10px;
+    color: transparent;
+  }
+
+  .task-item.done .task-check {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+  }
+
+  .task-text {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .task-item.done .task-text {
+    text-decoration: line-through;
+    color: var(--text-muted);
+  }
+
+  .task-pomos {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .task-delete {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+  }
+
+  .task-item:hover .task-delete { opacity: 1; }
+  .task-delete:hover { color: var(--danger); }
+
+  .empty-tasks {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-muted);
+    font-size: 13px;
+    border: 0.5px dashed var(--border-strong);
+    border-radius: var(--radius);
+  }
+
+  /* ── Session dots ───────────────────────────────────────── */
+  .session-dots {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border-strong);
+    transition: background 0.3s;
+  }
+
+  .dot.done { background: var(--work-color); }
+  .dot.current { background: var(--text-muted); }
+
+  /* ── Notification badge ─────────────────────────────────── */
+  .streak-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--warning-bg);
+    color: var(--warning);
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+    border: 0.5px solid rgba(217,119,6,0.2);
+  }
+</style>
+</head>
+<body>
+
+<h1>Focus Timer</h1>
+
+<div class="streak-badge" id="streakBadge">🔥 <span id="streakText">0-day streak</span></div>
+
+<div class="mode-tabs">
+  <button class="mode-tab active" data-mode="work">Focus</button>
+  <button class="mode-tab" data-mode="short">Short break</button>
+  <button class="mode-tab" data-mode="long">Long break</button>
+</div>
+
+<div class="timer-wrap">
+  <svg class="timer-svg" viewBox="0 0 240 240">
+    <circle class="timer-track" cx="120" cy="120" r="108"/>
+    <circle class="timer-progress" id="timerRing" cx="120" cy="120" r="108"/>
+  </svg>
+  <div class="timer-center">
+    <div class="timer-display" id="timerDisplay">25:00</div>
+    <div class="timer-label" id="timerLabel">Focus</div>
+  </div>
+</div>
+
+<div class="session-dots" id="sessionDots"></div>
+
+<div class="controls">
+  <button class="btn-icon" id="btnReset" title="Reset">↺</button>
+  <button class="btn-primary" id="btnPlay">▶</button>
+  <button class="btn-icon" id="btnSkip" title="Skip">⏭</button>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <div class="stat-value" id="statPomos">0</div>
+    <div class="stat-label">Today</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="statFocus">0m</div>
+    <div class="stat-label">Focus time</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="statDone">0</div>
+    <div class="stat-label">Tasks done</div>
+  </div>
+</div>
+
+<div class="tasks-wrap">
+  <div class="tasks-header">
+    <span class="tasks-title">Tasks</span>
+    <button class="tasks-clear" id="btnClearDone">Clear done</button>
+  </div>
+  <div class="task-input-row">
+    <input class="task-input" id="taskInput" placeholder="Add a task…" maxlength="80"/>
+    <button class="btn-add" id="btnAddTask">Add</button>
+  </div>
+  <div class="task-list" id="taskList"></div>
+</div>
+
+<script>
+const MODES = {
+  work:  { label: 'Focus',       mins: 25, color: '#e24b4a' },
+  short: { label: 'Short break', mins: 5,  color: '#1d9e75' },
+  long:  { label: 'Long break',  mins: 15, color: '#378add' },
+};
+
+const CIRCUMFERENCE = 2 * Math.PI * 108;
+
+const ring = document.getElementById('timerRing');
+ring.style.strokeDasharray = CIRCUMFERENCE;
+ring.style.strokeDashoffset = 0;
+
+let state = load('ft_state') || {
+  mode: 'work',
+  secondsLeft: MODES.work.mins * 60,
+  running: false,
+  sessionPomos: 0,
+  todayDate: today(),
+  todayPomos: 0,
+  focusMinutes: 0,
+  streak: 0,
+  lastWorkDate: null,
+};
+
+let tasks = load('ft_tasks') || [];
+let intervalId = null;
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function save(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+}
+
+function load(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch(e) { return null; }
+}
+
+function resetDayIfNeeded() {
+  const t = today();
+  if (state.todayDate !== t) {
+    state.todayDate = t;
+    state.todayPomos = 0;
+    state.focusMinutes = 0;
+  }
+}
+
+function updateStreak(worked) {
+  if (!worked) return;
+  const t = today();
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (state.lastWorkDate === t) return;
+  if (state.lastWorkDate === yesterday || state.lastWorkDate === null) {
+    state.streak = (state.streak || 0) + 1;
+  } else {
+    state.streak = 1;
+  }
+  state.lastWorkDate = t;
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+}
+
+function setProgress(secondsLeft, totalSeconds) {
+  const frac = secondsLeft / totalSeconds;
+  ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - frac);
+  ring.style.stroke = MODES[state.mode].color;
+}
+
+function renderDots() {
+  const el = document.getElementById('sessionDots');
+  el.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    if (i < state.sessionPomos) d.classList.add('done');
+    else if (i === state.sessionPomos && state.mode === 'work') d.classList.add('current');
+    el.appendChild(d);
+  }
+}
+
+function renderStats() {
+  document.getElementById('statPomos').textContent = state.todayPomos;
+  document.getElementById('statFocus').textContent = state.focusMinutes + 'm';
+  document.getElementById('statDone').textContent = tasks.filter(t => t.done).length;
+  const s = state.streak || 0;
+  document.getElementById('streakText').textContent = `${s}-day streak`;
+}
+
+function renderTasks() {
+  const list = document.getElementById('taskList');
+  if (tasks.length === 0) {
+    list.innerHTML = '<div class="empty-tasks">Add a task to track your work sessions</div>';
+    return;
+  }
+  list.innerHTML = '';
+  tasks.forEach((task, i) => {
+    const item = document.createElement('div');
+    item.className = 'task-item' + (task.done ? ' done' : '');
+    item.innerHTML = `
+      <div class="task-check" data-i="${i}">${task.done ? '✓' : ''}</div>
+      <span class="task-text" data-i="${i}">${escHtml(task.text)}</span>
+      ${task.pomos ? `<span class="task-pomos">🍅 ${task.pomos}</span>` : ''}
+      <button class="task-delete" data-i="${i}" title="Delete">×</button>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function render() {
+  resetDayIfNeeded();
+  const total = MODES[state.mode].mins * 60;
+  document.getElementById('timerDisplay').textContent = formatTime(state.secondsLeft);
+  document.getElementById('timerLabel').textContent = MODES[state.mode].label;
+  setProgress(state.secondsLeft, total);
+  document.getElementById('btnPlay').textContent = state.running ? '⏸' : '▶';
+  document.querySelectorAll('.mode-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.mode === state.mode);
+  });
+  renderDots();
+  renderStats();
+  renderTasks();
+}
+
+function switchMode(mode) {
+  clearInterval(intervalId);
+  state.mode = mode;
+  state.secondsLeft = MODES[mode].mins * 60;
+  state.running = false;
+  save('ft_state', state);
+  render();
+}
+
+function tick() {
+  if (state.secondsLeft <= 0) {
+    onTimerEnd();
+    return;
+  }
+  state.secondsLeft--;
+  if (state.mode === 'work') {
+    state.focusMinutes = (state.focusMinutes || 0);
+  }
+  save('ft_state', state);
+  render();
+}
+
+function onTimerEnd() {
+  clearInterval(intervalId);
+  intervalId = null;
+  state.running = false;
+
+  if (state.mode === 'work') {
+    state.todayPomos = (state.todayPomos || 0) + 1;
+    state.focusMinutes = (state.focusMinutes || 0) + MODES.work.mins;
+    state.sessionPomos = ((state.sessionPomos || 0) + 1) % 4;
+    updateStreak(true);
+
+    // Credit pomos to active (non-done) tasks
+    const active = tasks.filter(t => !t.done);
+    if (active.length > 0) {
+      active[0].pomos = (active[0].pomos || 0) + 1;
+      save('ft_tasks', tasks);
+    }
+
+    // Auto-suggest break
+    const nextMode = state.sessionPomos === 0 ? 'long' : 'short';
+    switchMode(nextMode);
+    notify('Break time!', MODES[nextMode].label + ' — ' + MODES[nextMode].mins + ' min');
+  } else {
+    switchMode('work');
+    notify('Back to work!', 'Start your next focus session.');
+  }
+}
+
+function notify(title, body) {
+  if (Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '' });
+  }
+}
+
+function toggleTimer() {
+  if (state.running) {
+    clearInterval(intervalId);
+    state.running = false;
+  } else {
+    if (Notification.permission === 'default') Notification.requestPermission();
+    state.running = true;
+    intervalId = setInterval(tick, 1000);
+  }
+  save('ft_state', state);
+  render();
+}
+
+function resetTimer() {
+  clearInterval(intervalId);
+  intervalId = null;
+  state.running = false;
+  state.secondsLeft = MODES[state.mode].mins * 60;
+  save('ft_state', state);
+  render();
+}
+
+function addTask() {
+  const input = document.getElementById('taskInput');
+  const text = input.value.trim();
+  if (!text) return;
+  tasks.push({ text, done: false, pomos: 0 });
+  input.value = '';
+  save('ft_tasks', tasks);
+  render();
+}
+
+function toggleTask(i) {
+  tasks[i].done = !tasks[i].done;
+  save('ft_tasks', tasks);
+  render();
+}
+
+function deleteTask(i) {
+  tasks.splice(i, 1);
+  save('ft_tasks', tasks);
+  render();
+}
+
+// Event listeners
+document.getElementById('btnPlay').addEventListener('click', toggleTimer);
+document.getElementById('btnReset').addEventListener('click', resetTimer);
+document.getElementById('btnSkip').addEventListener('click', onTimerEnd);
+
+document.querySelectorAll('.mode-tab').forEach(btn => {
+  btn.addEventListener('click', () => switchMode(btn.dataset.mode));
+});
+
+document.getElementById('btnAddTask').addEventListener('click', addTask);
+document.getElementById('taskInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addTask();
+});
+
+document.getElementById('taskList').addEventListener('click', e => {
+  const i = e.target.dataset.i;
+  if (i === undefined) return;
+  if (e.target.classList.contains('task-delete')) deleteTask(+i);
+  else if (e.target.classList.contains('task-check') || e.target.classList.contains('task-text')) toggleTask(+i);
+});
+
+document.getElementById('btnClearDone').addEventListener('click', () => {
+  tasks = tasks.filter(t => !t.done);
+  save('ft_tasks', tasks);
+  render();
+});
+
+// Resume timer if it was running (best-effort — tab was closed mid-session)
+if (state.running) {
+  state.running = false;
+  intervalId = setInterval(tick, 1000);
+  intervalId; // start fresh
+  state.running = true;
+}
+
+render();
+</script>
+</body>
+</html>
